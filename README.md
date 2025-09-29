@@ -7,7 +7,7 @@ deployments*
 
 Your project is live at:
 
-**[https://vercel.com/subham4555sahoo-5950s-projects/v0-cognitiveappmain]([(https://dementia226.vercel.app/)])**
+**[https://dementia226.vercel.app/]([(https://dementia226.vercel.app/)])**
 
 ## How It Works
 
