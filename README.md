@@ -7,7 +7,7 @@ deployments*
 
 Your project is live at:
 
-**[https://dementia226.vercel.app/]([(https://dementia226.vercel.app/)])**
+**[https://dementia226.vercel.app/](https://dementia226.vercel.app/)**
 
 ## How It Works
 
