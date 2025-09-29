@@ -1,13 +1,13 @@
 # cognitiveappmain
 deployments*
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://dementia226.vercel.app/))
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://dementia226.vercel.app/)
 
 ## Deployment
 
 Your project is live at:
 
-**[https://vercel.com/subham4555sahoo-5950s-projects/v0-cognitiveappmain]([https://vercel.com/subham4555sahoo-5950s-projects/v0-cognitiveappmain](https://dementia226.vercel.app/))**
+**[https://vercel.com/subham4555sahoo-5950s-projects/v0-cognitiveappmain]([(https://dementia226.vercel.app/)])**
 
 ## How It Works
 
