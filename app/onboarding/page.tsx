@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
+
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,6 +14,7 @@ import { CognitiveLogo } from "@/components/cognitive-logo"
 import { ArrowLeft, ArrowRight, User, Phone, Shield, Clock } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useSilenceResizeObserverErrors } from "@/components/use-resizeobserver-silencer"
 
 interface OnboardingData {
   fullName: string
@@ -42,44 +45,7 @@ export default function OnboardingPage() {
 
   const totalSteps = 4 // Reduced from 5 to 4 steps since we removed one step
 
-  useEffect(() => {
-    const originalConsoleError = console.error
-    console.error = (...args) => {
-      if (
-        args[0] &&
-        typeof args[0] === "string" &&
-        args[0].includes("ResizeObserver loop completed with undelivered notifications")
-      ) {
-        // Suppress ResizeObserver errors
-        return
-      }
-      originalConsoleError.apply(console, args)
-    }
-
-    const handleError = (event: ErrorEvent) => {
-      if (event.message && event.message.includes("ResizeObserver loop completed with undelivered notifications")) {
-        event.preventDefault()
-        event.stopPropagation()
-        return false
-      }
-    }
-
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (event.reason && event.reason.message && event.reason.message.includes("ResizeObserver")) {
-        event.preventDefault()
-        return false
-      }
-    }
-
-    window.addEventListener("error", handleError)
-    window.addEventListener("unhandledrejection", handleUnhandledRejection)
-
-    return () => {
-      console.error = originalConsoleError
-      window.removeEventListener("error", handleError)
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection)
-    }
-  }, [])
+  useSilenceResizeObserverErrors()
 
   useEffect(() => {
     const langMap: Record<string, string> = {
@@ -163,12 +129,11 @@ export default function OnboardingPage() {
             <span className="text-sm font-medium text-foreground">Profile Setup</span>
             <span className="text-sm text-muted-foreground">{Math.round((step / totalSteps) * 100)}%</span>
           </div>
-          <div className="w-full bg-muted rounded-full h-3">
+          <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
             <div
-              className="medical-gradient-1 h-3 rounded-full transition-all duration-500 ease-in-out"
+              className="medical-gradient-1 h-3 rounded-full"
               style={{
                 width: `${(step / totalSteps) * 100}%`,
-                transform: "translateZ(0)", // Force hardware acceleration to prevent layout thrashing
               }}
             />
           </div>

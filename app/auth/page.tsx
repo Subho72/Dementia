@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,57 +23,132 @@ export default function AuthPage() {
     fullName: "",
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string>("")
+  const supabase = createSupabaseClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setErrorMessage("")
 
-    // Simulate authentication process
-    setTimeout(() => {
+    const normalized = {
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password.trim(),
+      confirmPassword: formData.confirmPassword.trim(),
+      fullName: formData.fullName.trim(),
+    }
+
+    try {
       if (isLogin) {
-        // Check if user exists in localStorage
-        const users = JSON.parse(localStorage.getItem("cognitiveUsers") || "[]")
-        const user = users.find((u: any) => u.email === formData.email && u.password === formData.password)
-
-        if (user) {
-          localStorage.setItem("cognitiveCurrentUser", JSON.stringify(user))
-          router.push("/dashboard")
-        } else {
-          alert("Invalid credentials. Please check your email and password.")
+        console.log("[v0] Supabase login attempt:", { email: normalized.email })
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: normalized.email,
+          password: normalized.password,
+        })
+        if (error) {
+          console.log("[v0] Supabase login error:", error.message)
+          setErrorMessage(error.message || "Invalid credentials. Please check your email and password.")
+          setIsLoading(false)
+          return
         }
+
+        const user = data.user
+        console.log("[v0] Supabase login success:", { id: user?.id, email: user?.email })
+
+        // Try to fetch profile for full name (optional)
+        let fullName = normalized.fullName
+        try {
+          const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user!.id).maybeSingle()
+          if (profile?.full_name) fullName = profile.full_name
+        } catch {
+          // non-fatal
+        }
+
+        // Keep localStorage compatibility for the rest of the app
+        localStorage.setItem(
+          "cognitiveCurrentUser",
+          JSON.stringify({
+            id: user?.id,
+            email: user?.email,
+            fullName: fullName || user?.email?.split("@")[0] || "User",
+            createdAt: new Date().toISOString(),
+            assessments: [],
+          }),
+        )
+
+        router.push("/dashboard")
       } else {
-        // Sign up process
-        if (formData.password !== formData.confirmPassword) {
-          alert("Passwords do not match!")
+        // Sign up
+        if (normalized.password !== normalized.confirmPassword) {
+          setErrorMessage("Passwords do not match!")
           setIsLoading(false)
           return
         }
 
-        const users = JSON.parse(localStorage.getItem("cognitiveUsers") || "[]")
-        const existingUser = users.find((u: any) => u.email === formData.email)
+        console.log("[v0] Supabase signup attempt:", { email: normalized.email })
+        const { data, error } = await supabase.auth.signUp({
+          email: normalized.email,
+          password: normalized.password,
+          options: {
+            emailRedirectTo:
+              // will be undefined in preview unless you add it; falls back to origin
+              // This is okay—Supabase will accept origin URLs.
+              (process as any).env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin,
+          },
+        })
 
-        if (existingUser) {
-          alert("User already exists with this email!")
+        if (error) {
+          console.log("[v0] Supabase signup error:", error.message)
+          setErrorMessage(error.message || "Unable to create your account. Please try again.")
           setIsLoading(false)
           return
         }
 
-        const newUser = {
-          id: Date.now().toString(),
-          email: formData.email,
-          password: formData.password,
-          fullName: formData.fullName,
-          createdAt: new Date().toISOString(),
-          assessments: [],
+        const user = data.user
+        console.log("[v0] Supabase signup success:", { id: user?.id, email: user?.email })
+
+        // Best effort: create or upsert profile with full name (requires RLS policy)
+        try {
+          if (user?.id) {
+            const { error: profileErr } = await supabase
+              .from("profiles")
+              .upsert({ id: user.id, email: normalized.email, full_name: normalized.fullName }, { onConflict: "id" })
+            if (profileErr) {
+              console.log("[v0] Supabase profile upsert error (non-fatal):", profileErr.message)
+            }
+          }
+        } catch (err) {
+          console.log("[v0] Profile upsert exception (non-fatal):", (err as Error).message)
         }
 
-        users.push(newUser)
-        localStorage.setItem("cognitiveUsers", JSON.stringify(users))
-        localStorage.setItem("cognitiveCurrentUser", JSON.stringify(newUser))
+        // If email confirmation is required, session may be null
+        // In many setups, session is present immediately. If not, inform the user.
+        if (!data.session) {
+          setErrorMessage("Account created. Please check your email to verify your address, then sign in.")
+          setIsLoading(false)
+          return
+        }
+
+        // Keep localStorage compatibility for the rest of the app
+        localStorage.setItem(
+          "cognitiveCurrentUser",
+          JSON.stringify({
+            id: user?.id,
+            email: user?.email,
+            fullName: normalized.fullName || user?.email?.split("@")[0] || "User",
+            createdAt: new Date().toISOString(),
+            assessments: [],
+          }),
+        )
+
         router.push("/dashboard")
       }
+    } catch (err) {
+      console.log("[v0] Auth unexpected error:", (err as Error).message)
+      setErrorMessage("Something went wrong. Please try again.")
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -186,6 +261,12 @@ export default function AuthPage() {
                 )}
               </Button>
             </form>
+
+            {errorMessage && (
+              <p className="text-sm text-red-500 mt-2" role="alert">
+                {errorMessage}
+              </p>
+            )}
 
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">

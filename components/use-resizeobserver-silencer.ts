@@ -2,9 +2,9 @@
 
 import { useEffect } from "react"
 
-export function ErrorBoundary() {
+export function useSilenceResizeObserverErrors() {
   useEffect(() => {
-    const handleErrorCapture = (event: any) => {
+    const filterROError = (event: any) => {
       try {
         const msg = (event && event.message) || (event && event.reason && event.reason.message) || ""
         if (
@@ -18,19 +18,17 @@ export function ErrorBoundary() {
           return false
         }
       } catch {
-        // no-op
+        // ignore
       }
       return undefined
     }
 
-    window.addEventListener("error", handleErrorCapture, true)
-    window.addEventListener("unhandledrejection", handleErrorCapture, true)
+    window.addEventListener("error", filterROError, true)
+    window.addEventListener("unhandledrejection", filterROError, true)
 
     return () => {
-      window.removeEventListener("error", handleErrorCapture, true)
-      window.removeEventListener("unhandledrejection", handleErrorCapture, true)
+      window.removeEventListener("error", filterROError, true)
+      window.removeEventListener("unhandledrejection", filterROError, true)
     }
   }, [])
-
-  return null
 }
